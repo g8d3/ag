@@ -110,7 +110,7 @@ models_to_test = [
     # "qwen/qwen-2.5-7b-instruct",
     # "openrouter/optimus-alpha",
     # "openrouter/quasar-alpha",
-    # "liquid/lfm-7b",
+    "liquid/lfm-7b",
     # "deepseek/deepseek-r1-distill-qwen-1.5b"
 ]
 

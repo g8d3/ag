@@ -108,10 +108,10 @@ models_to_test = [
     # "google/gemini-pro-1.5",
     # "google/gemini-flash-1.5-8b",
     # "qwen/qwen-2.5-7b-instruct",
-    # "openrouter/optimus-alpha",
+    "openrouter/optimus-alpha",
     # "openrouter/quasar-alpha",
     # "liquid/lfm-7b",
-    "deepseek/deepseek-r1-distill-qwen-1.5b"
+    # "deepseek/deepseek-r1-distill-qwen-1.5b"
 ]
 
 for model_id in models_to_test:

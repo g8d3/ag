@@ -108,6 +108,7 @@ models_to_test = [
     # "google/gemini-pro-1.5",
     # "google/gemini-flash-1.5-8b",
     "google/gemini-2.0-flash-001",
+    # "google/gemini-2.0-flash-lite-001",
     # "google/gemini-2.0-flash-exp:free",
     # "openai/gpt-4.1-nano",
     # "qwen/qwen-2.5-7b-instruct",

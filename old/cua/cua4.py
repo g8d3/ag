@@ -107,6 +107,7 @@ models_to_test = [
     # "meta-llama/llama-3-70b-instruct",
     # "google/gemini-pro-1.5",
     # "google/gemini-flash-1.5-8b",
+    "google/gemini-flash-2.0",
     # "qwen/qwen-2.5-7b-instruct",
     # "openrouter/optimus-alpha",
     # "openrouter/quasar-alpha",

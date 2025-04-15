@@ -111,7 +111,7 @@ models_to_test = [
     # "openrouter/optimus-alpha",
     # "openrouter/quasar-alpha",
     # "liquid/lfm-7b",
-    "deepseek/deepseek-r1-distill-qwen-1.5b"
+    # "deepseek/deepseek-r1-distill-qwen-1.5b"
 ]
 
 for model_id in models_to_test:

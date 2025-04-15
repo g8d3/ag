@@ -130,7 +130,7 @@ for model_id in models_to_test:
     )
     
     # goal = "Show me the contents of the current directory"
-    goal = "read treechat.md and summarize it in 5 bullet points"
+    goal = "get the first 5 lines of treechat.md"
 
     # Measure time elapsed
     start_time = time.time()

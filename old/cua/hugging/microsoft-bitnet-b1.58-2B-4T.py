@@ -1,12 +1,15 @@
-from transformers import pipeline, AutoConfig
+from transformers import BitNetForCausalLM, AutoTokenizer
+
+model_name = "microsoft/bitnet-b1.58-2B-4T"
 
 try:
-    config = AutoConfig.from_pretrained("microsoft/bitnet-b1.58-2B-4T", trust_remote_code=True)
-    pipe = pipeline("text-generation", model="microsoft/bitnet-b1.58-2B-4T", config=config, trust_remote_code=True)
-    messages = [
-        {"role": "user", "content": "Who are you?"},
-    ]
-    response = pipe(messages)
+    model = BitNetForCausalLM.from_pretrained(model_name, trust_remote_code=True)
+    tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+
+    inputs = tokenizer("Who are you?", return_tensors="pt")
+    outputs = model.generate(**inputs)
+    response = tokenizer.decode(outputs[0], skip_special_tokens=True)
     print(response)
-except OSError as e:
+
+except Exception as e:
     print(f"Error loading model: {e}")

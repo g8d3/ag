@@ -1,8 +1,12 @@
-# Use a pipeline as a high-level helper
-from transformers import pipeline
+from transformers import pipeline, AutoConfig
 
-messages = [
-    {"role": "user", "content": "Who are you?"},
-]
-pipe = pipeline("text-generation", model="microsoft/bitnet-b1.58-2B-4T", trust_remote_code=True)
-pipe(messages)
+try:
+    config = AutoConfig.from_pretrained("microsoft/bitnet-b1.58-2B-4T", trust_remote_code=True)
+    pipe = pipeline("text-generation", model="microsoft/bitnet-b1.58-2B-4T", config=config, trust_remote_code=True)
+    messages = [
+        {"role": "user", "content": "Who are you?"},
+    ]
+    response = pipe(messages)
+    print(response)
+except OSError as e:
+    print(f"Error loading model: {e}")

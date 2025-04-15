@@ -129,10 +129,13 @@ for model_id in models_to_test:
         show_tool_calls=True
     )
     
+    # goal = "Show me the contents of the current directory"
+    goal = "Show me the contents of the current directory"
+
     # Measure time elapsed
     start_time = time.time()
     try:
-        agent.print_response("Show me the contents of the current directory", markdown=True)
+        agent.print_response(goal, markdown=True)
     except Exception as e:
         print(f"Error with {model_id}: {str(e)}")
     end_time = time.time()

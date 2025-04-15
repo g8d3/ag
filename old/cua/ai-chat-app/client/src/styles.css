@@ -1,0 +1,5 @@
+.app { display: flex; }
+.login, .chat, #config-tab { padding: 20px; }
+#chat-history { height: 400px; overflow-y: scroll; border: 1px solid #ccc; }
+#config-list { cursor: pointer; }
+#config-list li:hover { background: #f0f0f0; }

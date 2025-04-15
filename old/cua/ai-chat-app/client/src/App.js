@@ -15,7 +15,7 @@ function App() {
   return (
     <div className="app">
       <ConfigManager userId={userId} />
-      <Chat userId={userId} />
+      <Chat userId={userId} token={token} />
     </div>
   );
 }

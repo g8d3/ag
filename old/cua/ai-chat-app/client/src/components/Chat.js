@@ -2,16 +2,20 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import CodeExecutor from './CodeExecutor';
 
-function Chat({ userId }) {
+function Chat({ userId, token }) {
   const [message, setMessage] = useState('');
   const [chats, setChats] = useState([]);
 
   useEffect(() => {
-    axios.get(`http://localhost:5000/chat/${userId}`).then((res) => setChats(res.data));
+    axios.get(`http://localhost:5000/chat/${userId}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    }).then((res) => setChats(res.data));
   }, [userId]);
 
   const sendMessage = async () => {
-    const res = await axios.post('http://localhost:5000/chat', { userId, message });
+    const res = await axios.post('http://localhost:5000/chat', { userId, message }, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
     setChats([...chats, res.data]);
     setMessage('');
   };

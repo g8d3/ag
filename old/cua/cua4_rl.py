@@ -152,7 +152,7 @@ class RLAlgorithm:
         self.q_table = {}  # For Q-Learning/SARSA
         self.policy = {}   # For PPO
 
-    def update(self, state: str, action: str, reward: float, next_state: str) -> str:
+    def update(self, state: str, action: str, reward: float, next_state: str, next_action: Optional[str] = None) -> str:
         raise NotImplementedError
 
     def get_action(self, state: str) -> str:
@@ -165,7 +165,7 @@ class QLearning(RLAlgorithm):
         self.gamma = gamma
         self.epsilon = epsilon
 
-    def update(self, state: str, action: str, reward: float, next_state: str) -> str:
+    def update(self, state: str, action: str, reward: float, next_state: str, next_action: Optional[str] = None) -> str:
         self.q_table.setdefault(state, {})
         self.q_table[state].setdefault(action, 0.0)
         next_q = max(self.q_table.get(next_state, {}).values(), default=0.0)
@@ -187,7 +187,9 @@ class SARSA(RLAlgorithm):
         self.gamma = gamma
         self.epsilon = epsilon
 
-    def update(self, state: str, action: str, reward: float, next_state: str, next_action: str) -> str:
+    def update(self, state: str, action: str, reward: float, next_state: str, next_action: Optional[str] = None) -> str:
+        if next_action is None:
+            next_action = self.get_action(next_state)
         self.q_table.setdefault(state, {})
         self.q_table[state].setdefault(action, 0.0)
         self.q_table.setdefault(next_state, {})
@@ -208,9 +210,9 @@ class PPO(RLAlgorithm):
         super().__init__("PPO")
         self.clip_ratio = clip_ratio
 
-    def update(self, state: str, action: str, reward: float, next_state: str) -> str:
+    def update(self, state: str, action: str, reward: float, next_state: str, next_action: Optional[str] = None) -> str:
         self.policy.setdefault(state, {})
-        self.policy[state].setdefault(action, 1.0 / 3)  # Uniform initial policy
+        self.policy[state].setdefault(action, 1.0 / 3)
         old_prob = self.policy[state][action]
         new_prob = min(max(old_prob + reward * 0.1, old_prob * (1 - self.clip_ratio)), old_prob * (1 + self.clip_ratio))
         self.policy[state][action] = new_prob
@@ -233,7 +235,7 @@ class MetaAgent:
         self.current_algo = algorithms[0]
 
     def select_algorithm(self) -> RLAlgorithm:
-        if not self.scores[self.current_algo.name]:
+        if not any(self.scores.values()):
             return self.current_algo
         avg_scores = {name: np.mean(scores) if scores else 0 for name, scores in self.scores.items()}
         self.current_algo = max(avg_scores.items(), key=lambda x: x[1])[0]
@@ -298,7 +300,7 @@ class RLSimulation:
             with open(config_file, 'r') as f:
                 config = json.load(f)
                 if config.get("rl_algorithm") == "dynamic":
-                    config["rl_algorithm"] = None  # MetaAgent will select
+                    config["rl_algorithm"] = None
                 return config
         except Exception as e:
             raise Exception(f"Failed to load config: {str(e)}")
@@ -369,7 +371,10 @@ class RLSimulation:
             
             next_state = f"score_{int(avg_score)}"
             next_action = algo.get_action(next_state)
-            algo.update(self.state, action, avg_score / 100, next_state, next_action)
+            if algo.name == "SARSA":
+                algo.update(self.state, action, avg_score / 100, next_state, next_action)
+            else:
+                algo.update(self.state, action, avg_score / 100, next_state)
             self.state = next_state
 
             feedback = "\n".join([
@@ -384,7 +389,7 @@ class RLSimulation:
                 "rl_algorithm": algo.name
             })
             
-            if iteration == 0 and random.random() < 0.3:  # Occasionally generate new RL algorithm
+            if iteration == 0 and random.random() < 0.3:
                 new_algo = self.rl_generator.generate_algorithm([alg.name for alg in self.algorithms])
                 print(f"Generated New RL Algorithm: {new_algo.get('name')}")
                 self.history[-1]["new_algorithm"] = new_algo
@@ -425,7 +430,7 @@ config_content = {
     "library_file": "data_utils.py",
     "main_file": "app.py",
     "test_file": "tests.py",
-    "rl_algorithm": "dynamic"  # Options: "Q-Learning", "SARSA", "PPO", or "dynamic"
+    "rl_algorithm": "dynamic"
 }
 
 # Save config file
@@ -445,18 +450,18 @@ generator_model = OpenRouter(
 )
 evaluator_models = [
     OpenRouter(
-        id="google/gemini-2.0-flash-001",
+        id="google/gemini-pro-1.5",
         api_key=api_key,
         base_url="https://openrouter.ai/api/v1"
     ),
     OpenRouter(
-        id="google/gemini-2.0-flash-001",
+        id="anthropic/claude-3.5-sonnet",
         api_key=api_key,
         base_url="https://openrouter.ai/api/v1"
     )
 ]
 rl_generator_model = OpenRouter(
-    id="google/gemini-2.0-flash-001",
+    id="google/gemini-pro-1.5",
     api_key=api_key,
     base_url="https://openrouter.ai/api/v1"
 )
@@ -468,6 +473,47 @@ generator_agent = Agent(
 )
 evaluator_agents = [EvaluatorAgent(model) for model in evaluator_models]
 rl_generator_agent = RLGeneratorAgent(rl_generator_model)
+
+# Test RL algorithms
+test_file_content = """
+import pytest
+from cua4_rl import QLearning, SARSA, PPO
+
+def test_qlearning_update():
+    algo = QLearning()
+    state = "initial"
+    action = "improve_modularity"
+    reward = 0.8
+    next_state = "score_80"
+    algo.update(state, action, reward, next_state)
+    assert algo.q_table[state][action] > 0
+
+def test_sarsa_update():
+    algo = SARSA()
+    state = "initial"
+    action = "add_features"
+    reward = 0.7
+    next_state = "score_70"
+    next_action = "fix_bugs"
+    algo.update(state, action, reward, next_state, next_action)
+    assert algo.q_table[state][action] > 0
+
+def test_ppo_update():
+    algo = PPO()
+    state = "initial"
+    action = "fix_bugs"
+    reward = 0.9
+    next_state = "score_90"
+    algo.update(state, action, reward, next_state)
+    assert algo.policy[state][action] > 0.33
+"""
+
+with open("test_rl_algorithms.py", "w") as f:
+    f.write(test_file_content)
+
+shell_tools = ShellTools()
+test_result = shell_tools.execute("pytest test_rl_algorithms.py --tb=short")
+print(f"RL Algorithm Tests:\n{test_result}")
 
 simulation = RLSimulation(
     generator=generator_agent,

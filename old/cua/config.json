@@ -1,9 +1,9 @@
 {
-    "project_type": "Directory Site Generator",
-    "project_description": "An AI-powered directory site that aggregates data from multiple sources (e.g., web scraping, APIs, or files) and displays it in a web interface",
-    "prompt_template": "You are a coding agent building a {project_type} application ({project_description}).\n1. Evaluate whether to use existing libraries (e.g., requests, beautifulsoup4, Flask) or implement custom logic for data scraping, API calls, and web serving. Justify your choice in comments.\n2. Create a reusable Python library with utility functions (e.g., for data scraping or API calls).\n3. Write a main script that uses this library to implement a basic feature (e.g., fetch and display directory data).\n4. Generate pytest tests to validate the library and main script functionality.\n5. Follow DRY and CoC principles, keeping code modular and concise.\n6. Focus on this action: {action}.\n7. Save the library to '{library_file}', the main script to '{main_file}', and tests to '{test_file}' using FileTools.\nPrevious feedback (apply if provided):\n{feedback}\n\nOutput format (use exact syntax, no extra backticks):\n[FileTools]save:[library_code]:{library_file}[/FileTools]\n[FileTools]save:[main_code]:{main_file}[/FileTools]\n[FileTools]save:[test_code]:{test_file}[/FileTools]",
-    "library_file": "data_utils.py",
-    "main_file": "app.py",
-    "test_file": "tests.py",
-    "rl_algorithm": "dynamic"
+  "project_type": "Directory Site Generator",
+  "project_description": "An AI-powered directory site that aggregates data from multiple sources (e.g., web scraping, APIs, or files) and displays it in a web interface",
+  "prompt_template": "You are a coding agent building a {project_type} application ({project_description}).\n1. Evaluate whether to use existing libraries (e.g., requests, beautifulsoup4, Flask) or implement custom logic for data scraping, API calls, and web serving. Justify your choice in comments.\n2. Create a reusable Python library with utility functions (e.g., for data scraping or API calls).\n3. Write a main script that uses this library to implement a basic feature (e.g., fetch and display directory data).\n4. Generate pytest tests to validate the library and main script functionality.\n5. Follow DRY and CoC principles, keeping code modular and concise.\n6. Focus on this action: {action}.\n7. Save the library to '{library_file}', the main script to '{main_file}', and tests to '{test_file}' using FileTools.\nPrevious feedback (apply if provided):\n{feedback}\n\nOutput format (use exact syntax, no extra backticks):\n[FileTools]save:[library_code]:{library_file}[/FileTools]\n[FileTools]save:[main_code]:{main_file}[/FileTools]\n[FileTools]save:[test_code]:{test_file}[/FileTools]",
+  "library_file": "data_utils.py",
+  "main_file": "app.py",
+  "test_file": "tests.py",
+  "rl_algorithm": "dynamic"
 }

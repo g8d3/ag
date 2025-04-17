@@ -28,17 +28,20 @@ class ShellTools:
             return f"Unexpected error: {str(e)}"
 
 class FileTools:
-    def save(self, content: str, filename: str) -> str:
+    def save(self, content: str, filename: str, output_dir: str) -> str:
         try:
-            with open(filename, 'w') as f:
+            os.makedirs(output_dir, exist_ok=True)
+            filepath = os.path.join(output_dir, filename)
+            with open(filepath, 'w') as f:
                 f.write(content)
-            return f"Saved to {filename}"
+            return f"Saved to {filepath}"
         except Exception as e:
             return f"Error saving file: {str(e)}"
 
-    def read(self, filename: str) -> str:
+    def read(self, filename: str, output_dir: str) -> str:
         try:
-            with open(filename, 'r') as f:
+            filepath = os.path.join(output_dir, filename)
+            with open(filepath, 'r') as f:
                 return f.read()
         except Exception as e:
             return f"Error reading file: {str(e)}"
@@ -48,7 +51,6 @@ class Agent:
         self.model = model
         self.tools = {tool.__class__.__name__: tool for tool in tools}
         self.show_tool_calls = show_tool_calls
-        # Configure session with retries
         self.session = requests.Session()
         retries = Retry(total=3, backoff_factor=1, status_forcelist=[429, 500, 502, 503, 504])
         self.session.mount('https://', HTTPAdapter(max_retries=retries))
@@ -83,7 +85,7 @@ class Agent:
                 error_msg += f"\nStatus Code: {response.status_code}\nResponse Text: {response.text}"
             raise Exception(error_msg)
 
-    def _execute_tools(self, content: str) -> str:
+    def _execute_tools(self, content: str, output_dir: str) -> str:
         for tool_name, tool in self.tools.items():
             start_tag = f"[{tool_name}]"
             end_tag = f"[/{tool_name}]"
@@ -94,16 +96,14 @@ class Agent:
                 if tool_name == "ShellTools":
                     result = tool.execute(cmd)
                 elif tool_name == "FileTools":
-                    # Robust parsing for save/read commands
                     match = re.match(r"^(save|read):(.+?):(.+)$", cmd, re.DOTALL)
                     if match:
                         op, content_or_file, filename = match.groups()
                         if op == "save":
-                            # Clean content from backticks or code blocks
                             cleaned_content = re.sub(r'```python\n|```', '', content_or_file).strip()
-                            result = tool.save(cleaned_content, filename.strip())
+                            result = tool.save(cleaned_content, filename.strip(), output_dir)
                         elif op == "read":
-                            result = tool.read(content_or_file.strip())
+                            result = tool.read(content_or_file.strip(), output_dir)
                     else:
                         result = f"Invalid FileTools command: {cmd}"
                 else:
@@ -113,10 +113,10 @@ class Agent:
                 return result
         return content
 
-    def run(self, prompt: str, max_tokens: int = 2000) -> str:
+    def run(self, prompt: str, max_tokens: int = 2000, output_dir: str = ".") -> str:
         api_response = self._call_api(prompt, max_tokens)
         content = api_response.get("choices", [{}])[0].get("message", {}).get("content", prompt)
-        return self._execute_tools(content)
+        return self._execute_tools(content, output_dir)
 
 class EvaluatorAgent:
     def __init__(self, model: OpenRouter):
@@ -322,6 +322,15 @@ class RLSimulation:
         ]
         self.meta_agent = MetaAgent(self.algorithms)
         self.state = "initial"
+        self.output_dir = self._create_output_dir()
+
+    def _create_output_dir(self) -> str:
+        n = 1
+        while os.path.exists(f"output_{n}"):
+            n += 1
+        output_dir = f"output_{n}"
+        os.makedirs(output_dir, exist_ok=True)
+        return output_dir
 
     def _load_config(self, config_file: str) -> Dict:
         try:
@@ -337,13 +346,13 @@ class RLSimulation:
         shell_tools = self.generator.tools.get("ShellTools")
         if not shell_tools:
             return "ShellTools not available"
-        # Check if pytest is installed
         try:
             shell_tools.execute("pytest --version")
         except Exception:
             return "Pytest not installed. Please run 'pip install pytest'."
         try:
-            result = shell_tools.execute("pytest tests.py --tb=short")
+            test_file = os.path.join(self.output_dir, "tests.py")
+            result = shell_tools.execute(f"pytest {test_file} --tb=short")
             return result
         except Exception as e:
             return f"Test execution failed: {str(e)}"
@@ -356,7 +365,7 @@ class RLSimulation:
         feedback = ""
         
         for iteration in range(self.max_iterations):
-            print(f"\n--- Iteration {iteration + 1} ---")
+            print(f"\n--- Iteration {iteration + 1} (Output: {self.output_dir}) ---")
             if rl_algorithm is None:
                 algo = self.meta_agent.select_algorithm()
             else:
@@ -375,8 +384,8 @@ class RLSimulation:
             )
             start_time = time.time()
             try:
-                code_output = self.generator.run(prompt, max_tokens=3000)
-                print(f"Generated Code:\n{code_output}")
+                code_output = self.generator.run(prompt, max_tokens=3000, output_dir=self.output_dir)
+                print(f"Tool Results:\n{code_output}")
             except Exception as e:
                 print(f"Generation failed: {str(e)}")
                 self.history.append({
@@ -389,9 +398,9 @@ class RLSimulation:
                 break
             
             file_tools = self.generator.tools.get("FileTools")
-            lib_code = file_tools.read(self.config["library_file"]) if file_tools else "File not found"
-            main_code = file_tools.read(self.config["main_file"]) if file_tools else "File not found"
-            test_code = file_tools.read(self.config["test_file"]) if file_tools else "File not found"
+            lib_code = file_tools.read(self.config["library_file"], self.output_dir) if file_tools else "File not found"
+            main_code = file_tools.read(self.config["main_file"], self.output_dir) if file_tools else "File not found"
+            test_code = file_tools.read(self.config["test_file"], self.output_dir) if file_tools else "File not found"
             combined_code = f"# {self.config['library_file']}\n{lib_code}\n\n# {self.config['main_file']}\n{main_code}\n\n# {self.config['test_file']}\n{test_code}"
 
             test_results = self._run_tests()
@@ -423,7 +432,7 @@ class RLSimulation:
             ])
             self.history.append({
                 "iteration": iteration + 1,
-                "code": combined_code,
+                "code": f"Files saved to {self.output_dir}",
                 "score": avg_score,
                 "feedback": feedback,
                 "rl_algorithm": algo.name
@@ -442,9 +451,9 @@ class RLSimulation:
                 break
 
         try:
-            with open("simulation_results.json", "w") as f:
+            with open(os.path.join(self.output_dir, "simulation_results.json"), "w") as f:
                 json.dump(self.history, f, indent=2)
-            print("Results saved to simulation_results.json")
+            print(f"Results saved to {self.output_dir}/simulation_results.json")
         except Exception as e:
             print(f"Failed to save results: {str(e)}")
 
@@ -502,9 +511,9 @@ evaluator_models = [
 ]
 rl_generator_model = OpenRouter(
     id="google/gemini-pro-1.5",
-        api_key=api_key,
-        base_url="https://openrouter.ai/api/v1"
-    )
+    api_key=api_key,
+    base_url="https://openrouter.ai/api/v1"
+)
 
 generator_agent = Agent(
     model=generator_model,
@@ -517,27 +526,33 @@ rl_generator_agent = RLGeneratorAgent(rl_generator_model)
 # Test FileTools
 test_file_content = """
 import pytest
+import os
 from cua4_rl import FileTools
 
 def test_filetools_save():
     ft = FileTools()
     content = "def hello():\\n    return 'world'"
     filename = "test_file.py"
-    result = ft.save(content, filename)
-    assert result == f"Saved to {filename}"
-    with open(filename, 'r') as f:
+    output_dir = "test_output"
+    result = ft.save(content, filename, output_dir)
+    assert result == f"Saved to {output_dir}/{filename}"
+    with open(os.path.join(output_dir, filename), 'r') as f:
         assert f.read() == content
-    os.remove(filename)
+    os.remove(os.path.join(output_dir, filename))
+    os.rmdir(output_dir)
 
 def test_filetools_read():
     ft = FileTools()
     content = "test content"
     filename = "test_read.txt"
-    with open(filename, 'w') as f:
+    output_dir = "test_output"
+    os.makedirs(output_dir, exist_ok=True)
+    with open(os.path.join(output_dir, filename), 'w') as f:
         f.write(content)
-    result = ft.read(filename)
+    result = ft.read(filename, output_dir)
     assert result == content
-    os.remove(filename)
+    os.remove(os.path.join(output_dir, filename))
+    os.rmdir(output_dir)
 """
 
 with open("test_filetools.py", "w") as f:

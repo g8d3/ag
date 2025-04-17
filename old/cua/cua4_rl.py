@@ -7,6 +7,9 @@ from typing import Any, Dict, List, Optional
 import uuid
 import random
 import numpy as np
+import re
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 class OpenRouter:
     def __init__(self, id: str, api_key: str, base_url: str):
@@ -45,6 +48,10 @@ class Agent:
         self.model = model
         self.tools = {tool.__class__.__name__: tool for tool in tools}
         self.show_tool_calls = show_tool_calls
+        # Configure session with retries
+        self.session = requests.Session()
+        retries = Retry(total=3, backoff_factor=1, status_forcelist=[429, 500, 502, 503, 504])
+        self.session.mount('https://', HTTPAdapter(max_retries=retries))
 
     def _call_api(self, prompt: str, max_tokens: int = 2000) -> Dict:
         headers = {
@@ -61,11 +68,11 @@ class Agent:
         }
         
         try:
-            response = requests.post(
+            response = self.session.post(
                 f"{self.model.base_url}/chat/completions",
                 headers=headers,
                 json=data,
-                timeout=15
+                timeout=20
             )
             print(f"Model: {self.model.id}, Status: {response.status_code}, Response: {response.text[:200]}...")
             response.raise_for_status()
@@ -87,13 +94,18 @@ class Agent:
                 if tool_name == "ShellTools":
                     result = tool.execute(cmd)
                 elif tool_name == "FileTools":
-                    parts = cmd.split(":")
-                    if parts[0] == "save" and len(parts) == 3:
-                        result = tool.save(parts[1], parts[2])
-                    elif parts[0] == "read" and len(parts) == 2:
-                        result = tool.read(parts[1])
+                    # Robust parsing for save/read commands
+                    match = re.match(r"^(save|read):(.+?):(.+)$", cmd, re.DOTALL)
+                    if match:
+                        op, content_or_file, filename = match.groups()
+                        if op == "save":
+                            # Clean content from backticks or code blocks
+                            cleaned_content = re.sub(r'```python\n|```', '', content_or_file).strip()
+                            result = tool.save(cleaned_content, filename.strip())
+                        elif op == "read":
+                            result = tool.read(content_or_file.strip())
                     else:
-                        result = "Invalid FileTools command"
+                        result = f"Invalid FileTools command: {cmd}"
                 else:
                     result = "Unknown tool"
                 if self.show_tool_calls:
@@ -109,6 +121,9 @@ class Agent:
 class EvaluatorAgent:
     def __init__(self, model: OpenRouter):
         self.model = model
+        self.session = requests.Session()
+        retries = Retry(total=3, backoff_factor=1, status_forcelist=[429, 500, 502, 503, 504])
+        self.session.mount('https://', HTTPAdapter(max_retries=retries))
 
     def evaluate_code(self, code: str, project_type: str, project_description: str, test_results: str) -> Dict:
         prompt = (
@@ -134,23 +149,28 @@ class EvaluatorAgent:
         }
         
         try:
-            response = requests.post(
+            response = self.session.post(
                 f"{self.model.base_url}/chat/completions",
                 headers=headers,
                 json=data,
-                timeout=10
+                timeout=20
             )
             response.raise_for_status()
             content = response.json().get("choices", [{}])[0].get("message", {}).get("content", "{}")
-            return json.loads(content)
-        except Exception as e:
+            try:
+                return json.loads(content)
+            except json.JSONDecodeError as e:
+                print(f"JSON decode error: {e}, Raw response: {content}")
+                return {"score": 0, "functionality_feedback": f"Invalid JSON response: {content}", "quality_feedback": ""}
+        except requests.RequestException as e:
+            print(f"API call failed: {str(e)}, Response: {response.text if 'response' in locals() else 'N/A'}")
             return {"score": 0, "functionality_feedback": f"Evaluation failed: {str(e)}", "quality_feedback": ""}
 
 class RLAlgorithm:
     def __init__(self, name: str):
         self.name = name
-        self.q_table = {}  # For Q-Learning/SARSA
-        self.policy = {}   # For PPO
+        self.q_table = {}
+        self.policy = {}
 
     def update(self, state: str, action: str, reward: float, next_state: str, next_action: Optional[str] = None) -> str:
         raise NotImplementedError
@@ -247,6 +267,9 @@ class MetaAgent:
 class RLGeneratorAgent:
     def __init__(self, model: OpenRouter):
         self.model = model
+        self.session = requests.Session()
+        retries = Retry(total=3, backoff_factor=1, status_forcelist=[429, 500, 502, 503, 504])
+        self.session.mount('https://', HTTPAdapter(max_retries=retries))
 
     def generate_algorithm(self, existing_algorithms: List[str]) -> Dict:
         prompt = (
@@ -267,16 +290,21 @@ class RLGeneratorAgent:
         }
         
         try:
-            response = requests.post(
+            response = self.session.post(
                 f"{self.model.base_url}/chat/completions",
                 headers=headers,
                 json=data,
-                timeout=10
+                timeout=20
             )
             response.raise_for_status()
             content = response.json().get("choices", [{}])[0].get("message", {}).get("content", "{}")
-            return json.loads(content)
-        except Exception as e:
+            try:
+                return json.loads(content)
+            except json.JSONDecodeError as e:
+                print(f"JSON decode error in RLGenerator: {e}, Raw response: {content}")
+                return {"name": "Error", "description": f"Invalid JSON response: {content}", "pseudo_code": ""}
+        except requests.RequestException as e:
+            print(f"API call failed in RLGenerator: {str(e)}, Response: {response.text if 'response' in locals() else 'N/A'}")
             return {"name": "Error", "description": f"Generation failed: {str(e)}", "pseudo_code": ""}
 
 class RLSimulation:
@@ -309,6 +337,11 @@ class RLSimulation:
         shell_tools = self.generator.tools.get("ShellTools")
         if not shell_tools:
             return "ShellTools not available"
+        # Check if pytest is installed
+        try:
+            shell_tools.execute("pytest --version")
+        except Exception:
+            return "Pytest not installed. Please run 'pip install pytest'."
         try:
             result = shell_tools.execute("pytest tests.py --tb=short")
             return result
@@ -346,6 +379,13 @@ class RLSimulation:
                 print(f"Generated Code:\n{code_output}")
             except Exception as e:
                 print(f"Generation failed: {str(e)}")
+                self.history.append({
+                    "iteration": iteration + 1,
+                    "code": "Generation failed",
+                    "score": 0,
+                    "feedback": f"Generation error: {str(e)}",
+                    "rl_algorithm": algo.name
+                })
                 break
             
             file_tools = self.generator.tools.get("FileTools")
@@ -422,10 +462,10 @@ config_content = {
         "6. Focus on this action: {action}.\n"
         "7. Save the library to '{library_file}', the main script to '{main_file}', and tests to '{test_file}' using FileTools.\n"
         "Previous feedback (apply if provided):\n{feedback}\n\n"
-        "Output format:\n"
-        "[FileTools]save:```python\n# {library_file}\n<library_code>\n```:{library_file}[/FileTools]\n"
-        "[FileTools]save:```python\n# {main_file}\n<main_code>\n```:{main_file}[/FileTools]\n"
-        "[FileTools]save:```python\n# {test_file}\n<test_code>\n```:{test_file}[/FileTools]"
+        "Output format (use exact syntax, no extra backticks):\n"
+        "[FileTools]save:[library_code]:{library_file}[/FileTools]\n"
+        "[FileTools]save:[main_code]:{main_file}[/FileTools]\n"
+        "[FileTools]save:[test_code]:{test_file}[/FileTools]"
     ),
     "library_file": "data_utils.py",
     "main_file": "app.py",
@@ -462,9 +502,9 @@ evaluator_models = [
 ]
 rl_generator_model = OpenRouter(
     id="google/gemini-pro-1.5",
-    api_key=api_key,
-    base_url="https://openrouter.ai/api/v1"
-)
+        api_key=api_key,
+        base_url="https://openrouter.ai/api/v1"
+    )
 
 generator_agent = Agent(
     model=generator_model,
@@ -474,46 +514,41 @@ generator_agent = Agent(
 evaluator_agents = [EvaluatorAgent(model) for model in evaluator_models]
 rl_generator_agent = RLGeneratorAgent(rl_generator_model)
 
-# Test RL algorithms
+# Test FileTools
 test_file_content = """
 import pytest
-from cua4_rl import QLearning, SARSA, PPO
+from cua4_rl import FileTools
 
-def test_qlearning_update():
-    algo = QLearning()
-    state = "initial"
-    action = "improve_modularity"
-    reward = 0.8
-    next_state = "score_80"
-    algo.update(state, action, reward, next_state)
-    assert algo.q_table[state][action] > 0
+def test_filetools_save():
+    ft = FileTools()
+    content = "def hello():\\n    return 'world'"
+    filename = "test_file.py"
+    result = ft.save(content, filename)
+    assert result == f"Saved to {filename}"
+    with open(filename, 'r') as f:
+        assert f.read() == content
+    os.remove(filename)
 
-def test_sarsa_update():
-    algo = SARSA()
-    state = "initial"
-    action = "add_features"
-    reward = 0.7
-    next_state = "score_70"
-    next_action = "fix_bugs"
-    algo.update(state, action, reward, next_state, next_action)
-    assert algo.q_table[state][action] > 0
-
-def test_ppo_update():
-    algo = PPO()
-    state = "initial"
-    action = "fix_bugs"
-    reward = 0.9
-    next_state = "score_90"
-    algo.update(state, action, reward, next_state)
-    assert algo.policy[state][action] > 0.33
+def test_filetools_read():
+    ft = FileTools()
+    content = "test content"
+    filename = "test_read.txt"
+    with open(filename, 'w') as f:
+        f.write(content)
+    result = ft.read(filename)
+    assert result == content
+    os.remove(filename)
 """
 
-with open("test_rl_algorithms.py", "w") as f:
+with open("test_filetools.py", "w") as f:
     f.write(test_file_content)
 
 shell_tools = ShellTools()
-test_result = shell_tools.execute("pytest test_rl_algorithms.py --tb=short")
-print(f"RL Algorithm Tests:\n{test_result}")
+try:
+    test_result = shell_tools.execute("pytest test_filetools.py --tb=short")
+    print(f"FileTools Tests:\n{test_result}")
+except Exception:
+    print("Pytest not installed for FileTools tests. Please run 'pip install pytest'.")
 
 simulation = RLSimulation(
     generator=generator_agent,

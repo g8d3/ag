@@ -1,0 +1,28 @@
+[
+  {
+    "iteration": 1,
+    "code": "Files saved to output_4",
+    "score": 0.0,
+    "feedback": "Evaluator 1: Invalid JSON response: ```json\n{\n  \"score\": 10,\n  \"functionality_feedback\": \"The functionality is severely lacking. The provided information indicates critical errors: `app.py` and `tests.py` are missing, and pytest is not found. This suggests a complete failure to meet the basic requirements of a directory site generator. Without these files, no functionality can be assessed.\",\n  \"quality_feedback\": \"The code quality cannot be assessed as the core files (`app.py`, `tests.py`) are missing. The error messages indicate a broken or incomplete project structure. The absence of tests prevents any evaluation of code correctness or maintainability. The presence of `data_utils.py` is good, but without knowing its content or how it's used, it's impossible to evaluate its modularity, adherence to DRY principles, or reusability.\"\n}\n```\n ",
+    "rl_algorithm": "Q-Learning",
+    "new_algorithm": {
+      "name": "Error",
+      "description": "Invalid JSON response: ```json\n{\n  \"name\": \"Adaptive Trust Region SARSA (ATRSarsa)\",\n  \"description\": \"ATRSarsa combines on-policy learning from SARSA with the trust region update mechanism inspired by PPO to improve sample efficiency and stability. It addresses the conservatism of SARSA by dynamically adjusting the trust region size based on the observed variance in the Q-value estimates. A larger trust region is allowed when variance is low, enabling faster learning, while a smaller trust region is enforced when variance is high, preventing drastic policy changes and improving stability. It also incorporates a clipping function, similar to PPO, acting on the SARSA update target to further constrain policy updates within the adaptive trust region. This allows the algorithm to be more aggressive in exploration while maintaining stability and preventing catastrophic policy collapse.\",\n  \"pseudo_code\": \"```\\nAlgorithm ATRSarsa:\\n\\nInput:\\n  - Environment env\\n  - Learning rate \u03b1 (alpha)\\n  - Discount factor \u03b3 (gamma)\\n  - Initial trust region radius \u03b4 (delta)\\n  - Clipping parameter \u03b5 (epsilon)\\n  - Variance threshold \u03b8 (theta) for trust region adjustment\\n\\nInitialize:\\n  - Q-table Q(s, a) arbitrarily\\n  - Policy \u03c0(s) \u2190 argmax_a Q(s, a) (e.g., \u03b5-greedy)\\n  - Trust region size Delta(s,a) = \u03b4 for all states and actions\\n\\nLoop for each episode:\\n  Initialize state s\\n  Choose action a from s using policy \u03c0 (e.g., \u03b5-greedy)\\n\\n  Loop for each step in the episode:\\n    Take action a, observe reward r and next state s'\\n    Choose next action a' from s' using policy \u03c0 (e.g., \u03b5-greedy)\\n\\n    # Calculate SARSA target\\n    target = r + \u03b3 * Q(s', a')\\n\\n    # Calculate advantage estimate (using target and current Q)\\n    advantage = target - Q(s, a)\\n\\n    # Clip the advantage to constrain policy updates\\n    ratio = advantage / Delta(s,a) # Normalized advantage\\n    clipped_advantage = clip(ratio, -\u03b5, \u03b5) * Delta(s,a) # Clip to scaled epsilon\\n\\n    # Update Q-value using clipped advantage\\n    Q(s, a) = Q(s, a) + \u03b1 * (clipped_advantage) # Effectively Q(s, a) + \u03b1 * (clip(r + \u03b3 * Q(s', a') - Q(s, a), -Delta(s,a)*epsilon, Delta(s,a)*epsilon))\\n\\n    # Update policy based on updated Q-values\\n    \u03c0(s) = argmax_a Q(s, a) (e.g., update \u03b5-greedy probabilities)\\n\\n    # Adaptive Trust Region Update:\\n    # Estimate variance in Q-value updates for (s,a) - e.g., using a moving average\\n    variance = calculate_q_value_variance(Q, s, a) # Example: exponential moving average of squared error\\n\\n    # Adjust trust region size Delta(s,a) based on variance:\\n    if variance > \u03b8:\\n      Delta(s,a) = max(Delta(s,a) * 0.9, \u03b4*0.1)  # Decrease trust region size (minimum size to prevent collapse)\\n    else:\\n      Delta(s,a) = min(Delta(s,a) * 1.1, \u03b4*10)  # Increase trust region size (maximum size to prevent over-optimism)\\n\\n    s = s'\\n    a = a'\\n\\n    If s is terminal:\\n      break\\n```\"\n}\n```",
+      "pseudo_code": ""
+    }
+  },
+  {
+    "iteration": 2,
+    "code": "Files saved to output_4",
+    "score": 0.0,
+    "feedback": "Evaluator 1: Invalid JSON response: ```json\n{\n  \"score\": 10,\n  \"functionality_feedback\": \"The project is non-functional. The core application and test files are missing, as indicated by the 'No such file or directory' errors. This means the application cannot be run or tested, demonstrating a complete lack of functionality. The pytest error further reinforces this, as it indicates that the testing framework couldn't even be initiated due to missing test files.\",\n  \"quality_feedback\": \"The code quality cannot be assessed because the core application and test files are missing. While a `data_utils.py` file exists (indicated by `[library_code]`), without the application logic, it's impossible to determine if it's used correctly, modular, or adheres to DRY and CoC principles. The absence of the main application and tests suggests a severe lack of structure and maintainability.\",\n  \"missing_files\": [\"app.py\", \"tests.py\"]\n}\n```\n ",
+    "rl_algorithm": "Q-Learning"
+  },
+  {
+    "iteration": 3,
+    "code": "Generation failed",
+    "score": 0,
+    "feedback": "Generation error: API call failed for model google/gemini-2.0-flash-001: HTTPSConnectionPool(host='openrouter.ai', port=443): Read timed out.",
+    "rl_algorithm": "Q-Learning"
+  }
+]

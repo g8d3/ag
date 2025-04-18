@@ -499,18 +499,18 @@ generator_model = OpenRouter(
 )
 evaluator_models = [
     OpenRouter(
-        id="google/gemini-pro-1.5",
+        id="google/gemini-2.0-flash-001",
         api_key=api_key,
         base_url="https://openrouter.ai/api/v1"
     ),
-    OpenRouter(
-        id="anthropic/claude-3.5-sonnet",
-        api_key=api_key,
-        base_url="https://openrouter.ai/api/v1"
-    )
+    # OpenRouter(
+    #     id="anthropic/claude-3.5-sonnet",
+    #     api_key=api_key,
+    #     base_url="https://openrouter.ai/api/v1"
+    # )
 ]
 rl_generator_model = OpenRouter(
-    id="google/gemini-pro-1.5",
+    id="google/gemini-2.0-flash-001",
     api_key=api_key,
     base_url="https://openrouter.ai/api/v1"
 )
